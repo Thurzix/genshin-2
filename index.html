@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genshin Impact - Browser Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h1>GENSHIN IMPACT</h1>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+            <p>Carregando mundo aberto...</p>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- HUD Principal -->
+        <div id="hud">
+            <!-- Informações do Personagem Atual -->
+            <div class="character-info">
+                <div class="character-portrait" id="currentCharPortrait"></div>
+                <div class="character-stats">
+                    <div class="character-name" id="currentCharName">Traveler</div>
+                    <div class="health-bar-container">
+                        <div class="health-bar" id="playerHealth"></div>
+                        <span class="health-text" id="playerHealthText">100/100</span>
+                    </div>
+                    <div class="energy-bar-container">
+                        <div class="energy-bar" id="playerEnergy"></div>
+                        <span class="energy-text" id="playerEnergyText">0/80</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boss Info -->
+            <div class="boss-info" id="bossInfo" style="display: none;">
+                <div class="boss-name" id="bossName">Boss</div>
+                <div class="boss-health-container">
+                    <div class="boss-health-bar" id="bossHealth"></div>
+                    <span class="boss-health-text" id="bossHealthText">0/0</span>
+                </div>
+            </div>
+
+            <!-- Seletor de Personagens -->
+            <div class="character-selector">
+                <div class="character-slot" data-index="0">
+                    <div class="character-icon" id="char0"></div>
+                    <div class="character-element" id="element0"></div>
+                    <div class="character-cooldown" id="cooldown0"></div>
+                </div>
+                <div class="character-slot" data-index="1">
+                    <div class="character-icon" id="char1"></div>
+                    <div class="character-element" id="element1"></div>
+                    <div class="character-cooldown" id="cooldown1"></div>
+                </div>
+                <div class="character-slot" data-index="2">
+                    <div class="character-icon" id="char2"></div>
+                    <div class="character-element" id="element2"></div>
+                    <div class="character-cooldown" id="cooldown2"></div>
+                </div>
+                <div class="character-slot" data-index="3">
+                    <div class="character-icon" id="char3"></div>
+                    <div class="character-element" id="element3"></div>
+                    <div class="character-cooldown" id="cooldown3"></div>
+                </div>
+            </div>
+
+            <!-- Habilidades -->
+            <div class="skills-container">
+                <div class="skill-slot">
+                    <div class="skill-icon skill-normal">
+                        <span class="skill-key">LMB</span>
+                    </div>
+                    <div class="skill-name">Ataque Normal</div>
+                </div>
+                <div class="skill-slot">
+                    <div class="skill-icon skill-elemental" id="skillE">
+                        <span class="skill-key">E</span>
+                        <div class="skill-cooldown-overlay" id="skillECooldown"></div>
+                    </div>
+                    <div class="skill-name">Habilidade Elemental</div>
+                </div>
+                <div class="skill-slot">
+                    <div class="skill-icon skill-burst" id="skillQ">
+                        <span class="skill-key">Q</span>
+                        <div class="skill-cooldown-overlay" id="skillQCooldown"></div>
+                    </div>
+                    <div class="skill-name">Supremo</div>
+                </div>
+            </div>
+
+            <!-- Controles -->
+            <div class="controls-hint">
+                <p><strong>WASD</strong> - Mover | <strong>Space</strong> - Pular | <strong>Shift</strong> - Correr</p>
+                <p><strong>LMB</strong> - Ataque Normal | <strong>E</strong> - Habilidade | <strong>Q</strong> - Supremo</p>
+                <p><strong>1-4</strong> - Trocar Personagem | <strong>Mouse</strong> - Olhar</p>
+            </div>
+        </div>
+
+        <!-- Modal de Vitória -->
+        <div id="victoryModal" class="modal">
+            <div class="modal-content">
+                <h2>🎉 VITÓRIA! 🎉</h2>
+                <p>Você derrotou o boss!</p>
+                <div class="modal-buttons">
+                    <button id="respawnBoss" class="btn-primary">Lutar Novamente</button>
+                    <button id="closeModal" class="btn-secondary">Explorar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicador de Dano -->
+        <div id="damageNumbers"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
