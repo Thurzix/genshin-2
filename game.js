@@ -32,7 +32,16 @@ class GenshinGame {
             attackerEndLagFrames: 3,
             targetHitStunFrames: 4,
             critBonusFrames: 1,
-            impactCooldownMs: 90
+            impactCooldownMs: 90,
+            // Ritmo de combate: menos clicker, mais compromisso de animacao
+            normalAttackCooldownFrames: 36,
+            normalAttackLockFrames: 22,
+            normalAttackWindupMs: 140,
+            skillCastLockFrames: 34,
+            burstCastLockFrames: 52,
+            playerProjectileHitRadius: 1.35,
+            playerProjectileDefaultLife: 55,
+            playerProjectileDefaultRange: 16
         };
         
         this.init();
@@ -212,12 +221,13 @@ class GenshinGame {
                 health: 10000,
                 maxEnergy: 80,
                 energy: 0,
-                attackDamage: 500,
-                skillDamage: 1500,
-                burstDamage: 5000,
+                attackDamage: 1500,
+                skillDamage: 7000,
+                burstDamage: 14000,
                 skillCooldown: 0,
                 skillMaxCooldown: 6,
                 burstCooldown: 0,
+                normalAttackCooldown: 0,
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
@@ -234,12 +244,13 @@ class GenshinGame {
                 health: 12000,
                 maxEnergy: 80,
                 energy: 0,
-                attackDamage: 600,
-                skillDamage: 2000,
-                burstDamage: 6000,
+                attackDamage: 1900,
+                skillDamage: 9000,
+                burstDamage: 17000,
                 skillCooldown: 0,
                 skillMaxCooldown: 7,
                 burstCooldown: 0,
+                normalAttackCooldown: 0,
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
@@ -256,12 +267,13 @@ class GenshinGame {
                 health: 9000,
                 maxEnergy: 80,
                 energy: 0,
-                attackDamage: 800,
-                skillDamage: 1800,
-                burstDamage: 7000,
+                attackDamage: 1400,
+                skillDamage: 8000,
+                burstDamage: 18500,
                 skillCooldown: 0,
                 skillMaxCooldown: 10,
                 burstCooldown: 0,
+                normalAttackCooldown: 0,
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
@@ -278,12 +290,13 @@ class GenshinGame {
                 health: 11000,
                 maxEnergy: 90,
                 energy: 0,
-                attackDamage: 550,
-                skillDamage: 1700,
-                burstDamage: 8000,
+                attackDamage: 1700,
+                skillDamage: 8500,
+                burstDamage: 20000,
                 skillCooldown: 0,
                 skillMaxCooldown: 8,
                 burstCooldown: 0,
+                normalAttackCooldown: 0,
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
@@ -686,6 +699,7 @@ class GenshinGame {
     switchCharacter(index) {
         if (index === this.currentCharacterIndex) return;
         if (this.characters[index].health <= 0) return;
+        if (this.player && (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0)) return;
 
         // Cooldown de troca
         const cooldownTime = 1000; // 1 segundo
@@ -745,85 +759,80 @@ class GenshinGame {
     normalAttack() {
         if (!this.player || this.player.health <= 0) return;
         if (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0) return;
+        if (this.player.normalAttackCooldown > 0) return;
+
+        const attacker = this.player;
+        const attackOrigin = attacker.position.clone().add(new THREE.Vector3(0, 1, 0));
+        const attackDirection = new THREE.Vector3();
+        this.camera.getWorldDirection(attackDirection);
+        attackDirection.y = 0;
+        attackDirection.normalize();
+
+        attacker.normalAttackCooldown = this.config.normalAttackCooldownFrames;
+        attacker.endLagFrames = Math.max(attacker.endLagFrames, this.config.normalAttackLockFrames);
 
         // Animação de ataque
-        this.player.isAttacking = true;
-        this.player.attackTime = 20; // frames de animação
+        attacker.isAttacking = true;
+        attacker.attackTime = this.config.normalAttackLockFrames;
 
-        // Ataques diferentes por personagem
-        if (this.player.name === "Traveler") {
-            // Traveler: Projétil simples rápido
-            const projectile = this.createProjectile(
-                this.player.position.clone().add(new THREE.Vector3(0, 1, 0)),
-                this.player.attackDamage,
-                this.player.elementColor,
-                0.8
-            );
-        } else if (this.player.name === "Diluc") {
-            // Diluc: Onda de fogo em cone
-            for (let i = -1; i <= 1; i++) {
-                setTimeout(() => {
-                    const direction = new THREE.Vector3();
-                    this.camera.getWorldDirection(direction);
-                    
-                    // Adicionar spread ao cone
-                    const angle = i * 0.3;
-                    const rotatedDir = direction.clone();
-                    rotatedDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-                    
-                    const projectile = this.createProjectile(
-                        this.player.position.clone().add(new THREE.Vector3(0, 1, 0)),
-                        this.player.attackDamage * 0.7,
-                        0xff4500,
-                        0.6,
-                        rotatedDir
-                    );
-                }, Math.abs(i) * 50);
-            }
-        } else if (this.player.name === "Ganyu") {
-            // Ganyu: Flecha carregada que causa dano em área
-            const projectile = this.createProjectile(
-                this.player.position.clone().add(new THREE.Vector3(0, 1.2, 0)),
-                this.player.attackDamage * 1.2,
-                0x4169e1,
-                1.0
-            );
-            projectile.isCharged = true;
-            projectile.scale.set(1.5, 1.5, 1.5);
-        } else if (this.player.name === "Raiden Shogun") {
-            // Raiden: Corte rápido com rastro
-            const projectile = this.createProjectile(
-                this.player.position.clone().add(new THREE.Vector3(0, 1, 0)),
-                this.player.attackDamage,
-                0x9370db,
-                1.2
-            );
-            
-            // Criar rastro de corte
-            for (let i = 1; i <= 3; i++) {
-                setTimeout(() => {
-                    const trail = this.createProjectile(
-                        this.player.position.clone().add(new THREE.Vector3(0, 1, 0)),
-                        this.player.attackDamage * 0.3,
-                        0x9370db,
-                        1.0
-                    );
-                    trail.scale.set(0.5, 0.5, 0.5);
-                }, i * 50);
-            }
-        }
+        // Golpe executa apos o wind-up para criar mais peso na animacao
+        setTimeout(() => {
+            if (attacker.health <= 0) return;
 
-        // Adicionar partículas elementais (30% chance)
-        if (Math.random() < 0.3) {
-            this.addEnergy(5);
-            this.spawnElementalParticle();
-        }
+            if (attacker.name === "Traveler") {
+                this.createProjectile(
+                    attackOrigin.clone(),
+                    attacker.attackDamage,
+                    attacker.elementColor,
+                    0.45,
+                    attackDirection.clone(),
+                    60,
+                    16
+                );
+            } else if (attacker.name === "Diluc") {
+                const hit = this.tryMeleeHit(attacker, attackDirection, attacker.attackDamage, 4.2, 0.35, true);
+                if (!hit) {
+                    this.createHitEffect(attackOrigin.clone().add(attackDirection.clone().multiplyScalar(3)), 0xff4500);
+                }
+            } else if (attacker.name === "Ganyu") {
+                const projectile = this.createProjectile(
+                    attackOrigin.clone().add(new THREE.Vector3(0, 0.2, 0)),
+                    attacker.attackDamage * 1.35,
+                    0x4169e1,
+                    0.55,
+                    attackDirection.clone(),
+                    75,
+                    20
+                );
+                projectile.isCharged = true;
+                projectile.scale.set(1.35, 1.35, 1.35);
+            } else if (attacker.name === "Raiden Shogun") {
+                const mainHit = this.tryMeleeHit(attacker, attackDirection, attacker.attackDamage, 4.8, 0.25, true);
+
+                setTimeout(() => {
+                    if (!this.boss.isAlive) return;
+                    this.tryMeleeHit(attacker, attackDirection, attacker.attackDamage * 0.55, 4.5, 0.2);
+                }, 120);
+
+                if (!mainHit) {
+                    this.createHitEffect(attackOrigin.clone().add(attackDirection.clone().multiplyScalar(3.2)), 0x9370db);
+                }
+            }
+
+            if (Math.random() < 0.3) {
+                this.addEnergy(5);
+                this.spawnElementalParticle();
+            }
+        }, this.config.normalAttackWindupMs);
     }
 
     useSkill() {
         if (!this.player || this.player.health <= 0) return;
         if (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0) return;
         if (this.player.skillCooldown > 0) return;
+
+        this.player.endLagFrames = Math.max(this.player.endLagFrames, this.config.skillCastLockFrames);
+        this.player.attackTime = Math.max(this.player.attackTime || 0, this.config.skillCastLockFrames);
 
         // Usar habilidade
         this.player.skillCooldown = this.player.skillMaxCooldown * 60; // Converter para frames
@@ -995,6 +1004,9 @@ class GenshinGame {
         if (!this.player || this.player.health <= 0) return;
         if (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0) return;
         if (this.player.energy < this.player.maxEnergy) return;
+
+        this.player.endLagFrames = Math.max(this.player.endLagFrames, this.config.burstCastLockFrames);
+        this.player.attackTime = Math.max(this.player.attackTime || 0, this.config.burstCastLockFrames);
 
         // Usar supremo
         this.player.energy = 0;
@@ -1232,7 +1244,7 @@ class GenshinGame {
         this.updateSkillUI();
     }
 
-    createProjectile(position, damage, color, speed = 0.8, customDirection = null) {
+    createProjectile(position, damage, color, speed = 0.45, customDirection = null, life = null, maxRange = null) {
         const geometry = new THREE.SphereGeometry(0.2);
         const material = new THREE.MeshBasicMaterial({
             color: color,
@@ -1249,7 +1261,9 @@ class GenshinGame {
         }
         projectile.velocity = direction.multiplyScalar(speed);
         projectile.damage = damage;
-        projectile.life = 120; // 2 segundos
+        projectile.life = life ?? this.config.playerProjectileDefaultLife;
+        projectile.spawnPosition = position.clone();
+        projectile.maxRange = maxRange ?? this.config.playerProjectileDefaultRange;
 
         this.scene.add(projectile);
         this.projectiles.push(projectile);
@@ -1406,6 +1420,29 @@ class GenshinGame {
                 this.config.targetHitStunFrames + bonus
             );
         }
+    }
+
+    tryMeleeHit(attacker, attackDirection, damage, range = 4, coneDotMin = 0.3, isCrit = false) {
+        if (!this.boss || !this.boss.isAlive || !attacker) return false;
+
+        const toBoss = this.boss.position.clone().sub(attacker.position);
+        const distance = toBoss.length();
+        if (distance > range) return false;
+
+        toBoss.y = 0;
+        if (toBoss.lengthSq() <= 0) return false;
+        toBoss.normalize();
+
+        const dir = attackDirection.clone();
+        dir.y = 0;
+        if (dir.lengthSq() <= 0) return false;
+        dir.normalize();
+
+        const dot = dir.dot(toBoss);
+        if (dot < coneDotMin) return false;
+
+        this.damageEnemy(this.boss, damage, isCrit);
+        return true;
     }
 
     damageEnemy(enemy, damage, isCrit = false) {
@@ -1872,8 +1909,17 @@ class GenshinGame {
 
             // Checar colisão com boss (projéteis do player)
             if (!proj.isBossAttack && this.boss.isAlive) {
+                if (proj.maxRange && proj.spawnPosition) {
+                    const traveled = position.distanceTo(proj.spawnPosition);
+                    if (traveled > proj.maxRange) {
+                        this.scene.remove(proj.mesh || proj);
+                        this.projectiles.splice(i, 1);
+                        continue;
+                    }
+                }
+
                 const distance = position.distanceTo(this.boss.position);
-                if (distance < 2.5) {
+                if (distance < this.config.playerProjectileHitRadius) {
                     this.damageEnemy(this.boss, proj.damage);
                     this.scene.remove(proj.mesh || proj);
                     this.projectiles.splice(i, 1);
@@ -2052,15 +2098,19 @@ class GenshinGame {
     }
 
     updateCooldowns() {
-        // Atualizar cooldowns de habilidades
-        if (this.player) {
-            if (this.player.skillCooldown > 0) {
-                this.player.skillCooldown--;
-                if (this.player.skillCooldown === 0) {
+        // Atualizar cooldowns de habilidades/ataques
+        this.characters.forEach((char) => {
+            if (char.skillCooldown > 0) {
+                char.skillCooldown--;
+                if (this.player === char && char.skillCooldown === 0) {
                     this.updateSkillUI();
                 }
             }
-        }
+
+            if (char.normalAttackCooldown > 0) {
+                char.normalAttackCooldown--;
+            }
+        });
 
         // Atualizar cooldowns de troca de personagem
         this.characters.forEach((char, index) => {
