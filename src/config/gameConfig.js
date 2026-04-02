@@ -1,0 +1,112 @@
+export const GAME_CONFIG = {
+    moveSpeed: 0.15,
+    runSpeed: 0.25,
+    jumpForce: 0.3,
+    gravity: 0.015,
+    cameraSensitivity: 0.002,
+    // Feedback de impacto: valores baixos para manter responsivo
+    hitstopFrames: 2,
+    attackerEndLagFrames: 3,
+    targetHitStunFrames: 4,
+    critBonusFrames: 1,
+    impactCooldownMs: 90,
+    // Ritmo de combate: menos clicker, mais compromisso de animacao
+    normalAttackCooldownFrames: 36,
+    normalAttackLockFrames: 22,
+    normalAttackWindupMs: 140,
+    skillCastLockFrames: 34,
+    burstCastLockFrames: 52,
+    playerProjectileHitRadius: 1.35,
+    playerProjectileDefaultLife: 55,
+    playerProjectileDefaultRange: 16
+};
+
+export const CHARACTER_DEFINITIONS = [
+    {
+        name: "Traveler",
+        element: "Anemo",
+        elementColor: 0x69f0ae,
+        icon: "🗡️",
+        maxHealth: 10000,
+        health: 10000,
+        maxEnergy: 80,
+        energy: 0,
+        attackDamage: 1500,
+        skillDamage: 7000,
+        burstDamage: 14000,
+        skillCooldown: 0,
+        skillMaxCooldown: 6,
+        burstCooldown: 0,
+        normalAttackCooldown: 0,
+        endLagFrames: 0,
+        hitStunFrames: 0
+    },
+    {
+        name: "Diluc",
+        element: "Pyro",
+        elementColor: 0xff6b35,
+        icon: "🔥",
+        maxHealth: 12000,
+        health: 12000,
+        maxEnergy: 80,
+        energy: 0,
+        attackDamage: 1900,
+        skillDamage: 9000,
+        burstDamage: 17000,
+        skillCooldown: 0,
+        skillMaxCooldown: 7,
+        burstCooldown: 0,
+        normalAttackCooldown: 0,
+        endLagFrames: 0,
+        hitStunFrames: 0
+    },
+    {
+        name: "Ganyu",
+        element: "Cryo",
+        elementColor: 0x81d4fa,
+        icon: "❄️",
+        maxHealth: 9000,
+        health: 9000,
+        maxEnergy: 80,
+        energy: 0,
+        attackDamage: 1400,
+        skillDamage: 8000,
+        burstDamage: 18500,
+        skillCooldown: 0,
+        skillMaxCooldown: 10,
+        burstCooldown: 0,
+        normalAttackCooldown: 0,
+        endLagFrames: 0,
+        hitStunFrames: 0
+    },
+    {
+        name: "Raiden Shogun",
+        element: "Electro",
+        elementColor: 0xb388ff,
+        icon: "⚡",
+        maxHealth: 11000,
+        health: 11000,
+        maxEnergy: 90,
+        energy: 0,
+        attackDamage: 1700,
+        skillDamage: 8500,
+        burstDamage: 20000,
+        skillCooldown: 0,
+        skillMaxCooldown: 8,
+        burstCooldown: 0,
+        normalAttackCooldown: 0,
+        endLagFrames: 0,
+        hitStunFrames: 0
+    }
+];
+
+export const BOSS_DEFINITION = {
+    name: "Primo Geovishap",
+    maxHealth: 50000,
+    health: 50000,
+    damage: 2000,
+    attackRange: 3,
+    detectionRange: 30,
+    moveSpeed: 0.05,
+    attackMaxCooldown: 120
+};

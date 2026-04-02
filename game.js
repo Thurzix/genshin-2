@@ -3,6 +3,10 @@
 // Sistema de Combate Completo
 // ========================================
 
+import { GAME_CONFIG, CHARACTER_DEFINITIONS, BOSS_DEFINITION } from './src/config/gameConfig.js';
+import { UIController } from './src/ui/uiController.js';
+import { applyCombatImpact, tryMeleeHit } from './src/combat/impactSystem.js';
+
 class GenshinGame {
     constructor() {
         this.scene = null;
@@ -19,30 +23,10 @@ class GenshinGame {
         this.elementalParticles = [];
         this.globalHitstopFrames = 0;
         this.lastImpactAt = 0;
+        this.ui = new UIController(this);
         
         // Configurações de jogo
-        this.config = {
-            moveSpeed: 0.15,
-            runSpeed: 0.25,
-            jumpForce: 0.3,
-            gravity: 0.015,
-            cameraSensitivity: 0.002,
-            // Feedback de impacto: valores baixos para manter responsivo
-            hitstopFrames: 2,
-            attackerEndLagFrames: 3,
-            targetHitStunFrames: 4,
-            critBonusFrames: 1,
-            impactCooldownMs: 90,
-            // Ritmo de combate: menos clicker, mais compromisso de animacao
-            normalAttackCooldownFrames: 36,
-            normalAttackLockFrames: 22,
-            normalAttackWindupMs: 140,
-            skillCastLockFrames: 34,
-            burstCastLockFrames: 52,
-            playerProjectileHitRadius: 1.35,
-            playerProjectileDefaultLife: 55,
-            playerProjectileDefaultRange: 16
-        };
+        this.config = { ...GAME_CONFIG };
         
         this.init();
     }
@@ -210,101 +194,14 @@ class GenshinGame {
     }
 
     setupCharacters() {
-        // Definir 4 personagens com diferentes elementos e habilidades
-        this.characters = [
-            {
-                name: "Traveler",
-                element: "Anemo",
-                elementColor: 0x69f0ae,
-                icon: "🗡️",
-                maxHealth: 10000,
-                health: 10000,
-                maxEnergy: 80,
-                energy: 0,
-                attackDamage: 1500,
-                skillDamage: 7000,
-                burstDamage: 14000,
-                skillCooldown: 0,
-                skillMaxCooldown: 6,
-                burstCooldown: 0,
-                normalAttackCooldown: 0,
-                position: new THREE.Vector3(0, 1, 0),
-                velocity: new THREE.Vector3(0, 0, 0),
-                onGround: false,
-                mesh: null,
-                endLagFrames: 0,
-                hitStunFrames: 0
-            },
-            {
-                name: "Diluc",
-                element: "Pyro",
-                elementColor: 0xff6b35,
-                icon: "🔥",
-                maxHealth: 12000,
-                health: 12000,
-                maxEnergy: 80,
-                energy: 0,
-                attackDamage: 1900,
-                skillDamage: 9000,
-                burstDamage: 17000,
-                skillCooldown: 0,
-                skillMaxCooldown: 7,
-                burstCooldown: 0,
-                normalAttackCooldown: 0,
-                position: new THREE.Vector3(0, 1, 0),
-                velocity: new THREE.Vector3(0, 0, 0),
-                onGround: false,
-                mesh: null,
-                endLagFrames: 0,
-                hitStunFrames: 0
-            },
-            {
-                name: "Ganyu",
-                element: "Cryo",
-                elementColor: 0x81d4fa,
-                icon: "❄️",
-                maxHealth: 9000,
-                health: 9000,
-                maxEnergy: 80,
-                energy: 0,
-                attackDamage: 1400,
-                skillDamage: 8000,
-                burstDamage: 18500,
-                skillCooldown: 0,
-                skillMaxCooldown: 10,
-                burstCooldown: 0,
-                normalAttackCooldown: 0,
-                position: new THREE.Vector3(0, 1, 0),
-                velocity: new THREE.Vector3(0, 0, 0),
-                onGround: false,
-                mesh: null,
-                endLagFrames: 0,
-                hitStunFrames: 0
-            },
-            {
-                name: "Raiden Shogun",
-                element: "Electro",
-                elementColor: 0xb388ff,
-                icon: "⚡",
-                maxHealth: 11000,
-                health: 11000,
-                maxEnergy: 90,
-                energy: 0,
-                attackDamage: 1700,
-                skillDamage: 8500,
-                burstDamage: 20000,
-                skillCooldown: 0,
-                skillMaxCooldown: 8,
-                burstCooldown: 0,
-                normalAttackCooldown: 0,
-                position: new THREE.Vector3(0, 1, 0),
-                velocity: new THREE.Vector3(0, 0, 0),
-                onGround: false,
-                mesh: null,
-                endLagFrames: 0,
-                hitStunFrames: 0
-            }
-        ];
+        // Definir personagens a partir de config externa
+        this.characters = CHARACTER_DEFINITIONS.map((baseChar) => ({
+            ...baseChar,
+            position: new THREE.Vector3(0, 1, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            onGround: false,
+            mesh: null
+        }));
 
         // Criar mesh para cada personagem
         this.characters.forEach((char, index) => {
@@ -566,19 +463,19 @@ class GenshinGame {
     setupBoss() {
         // Criar boss
         this.boss = {
-            name: "Primo Geovishap",
-            maxHealth: 50000,
-            health: 50000,
-            damage: 2000,
+            name: BOSS_DEFINITION.name,
+            maxHealth: BOSS_DEFINITION.maxHealth,
+            health: BOSS_DEFINITION.health,
+            damage: BOSS_DEFINITION.damage,
             position: new THREE.Vector3(0, 2, -15),
             velocity: new THREE.Vector3(0, 0, 0),
             state: "idle", // idle, attacking, cooldown, dead
             attackCooldown: 0,
-            attackMaxCooldown: 120, // 2 segundos
+            attackMaxCooldown: BOSS_DEFINITION.attackMaxCooldown,
             mesh: null,
-            attackRange: 3,
-            detectionRange: 30,
-            moveSpeed: 0.05,
+            attackRange: BOSS_DEFINITION.attackRange,
+            detectionRange: BOSS_DEFINITION.detectionRange,
+            moveSpeed: BOSS_DEFINITION.moveSpeed,
             isAlive: true,
             hitStunFrames: 0
         };
@@ -676,24 +573,7 @@ class GenshinGame {
     }
 
     setupUI() {
-        // Modal buttons
-        document.getElementById('respawnBoss').addEventListener('click', () => {
-            this.respawnBoss();
-            document.getElementById('victoryModal').style.display = 'none';
-        });
-
-        document.getElementById('closeModal').addEventListener('click', () => {
-            document.getElementById('victoryModal').style.display = 'none';
-        });
-
-        // Character slots click
-        document.querySelectorAll('.character-slot').forEach((slot, index) => {
-            slot.addEventListener('click', () => {
-                if (index < this.characters.length) {
-                    this.switchCharacter(index);
-                }
-            });
-        });
+        this.ui.setupUI();
     }
 
     switchCharacter(index) {
@@ -1397,52 +1277,11 @@ class GenshinGame {
     }
 
     applyCombatImpact(attacker, target, isCrit = false) {
-        const now = performance.now();
-        if (now - this.lastImpactAt < this.config.impactCooldownMs) return;
-        this.lastImpactAt = now;
-
-        const bonus = isCrit ? this.config.critBonusFrames : 0;
-        this.globalHitstopFrames = Math.max(
-            this.globalHitstopFrames,
-            this.config.hitstopFrames + bonus
-        );
-
-        if (attacker && attacker.endLagFrames !== undefined) {
-            attacker.endLagFrames = Math.max(
-                attacker.endLagFrames,
-                this.config.attackerEndLagFrames + bonus
-            );
-        }
-
-        if (target && target.hitStunFrames !== undefined) {
-            target.hitStunFrames = Math.max(
-                target.hitStunFrames,
-                this.config.targetHitStunFrames + bonus
-            );
-        }
+        applyCombatImpact(this, attacker, target, isCrit);
     }
 
     tryMeleeHit(attacker, attackDirection, damage, range = 4, coneDotMin = 0.3, isCrit = false) {
-        if (!this.boss || !this.boss.isAlive || !attacker) return false;
-
-        const toBoss = this.boss.position.clone().sub(attacker.position);
-        const distance = toBoss.length();
-        if (distance > range) return false;
-
-        toBoss.y = 0;
-        if (toBoss.lengthSq() <= 0) return false;
-        toBoss.normalize();
-
-        const dir = attackDirection.clone();
-        dir.y = 0;
-        if (dir.lengthSq() <= 0) return false;
-        dir.normalize();
-
-        const dot = dir.dot(toBoss);
-        if (dot < coneDotMin) return false;
-
-        this.damageEnemy(this.boss, damage, isCrit);
-        return true;
+        return tryMeleeHit(this, attacker, attackDirection, damage, range, coneDotMin, isCrit);
     }
 
     damageEnemy(enemy, damage, isCrit = false) {
@@ -1481,19 +1320,7 @@ class GenshinGame {
     }
 
     showDamageNumber(position, damage, isCrit) {
-        const screenPos = position.clone().project(this.camera);
-        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (screenPos.y * -0.5 + 0.5) * window.innerHeight;
-
-        const damageEl = document.createElement('div');
-        damageEl.className = 'damage-number' + (isCrit ? ' critical' : '');
-        damageEl.textContent = Math.round(damage);
-        damageEl.style.left = x + 'px';
-        damageEl.style.top = y + 'px';
-        
-        document.getElementById('damageNumbers').appendChild(damageEl);
-
-        setTimeout(() => damageEl.remove(), 1000);
+        this.ui.showDamageNumber(position, damage, isCrit);
     }
 
     createHitEffect(position, color) {
@@ -2136,108 +1963,19 @@ class GenshinGame {
     }
 
     updateCharacterUI() {
-        if (!this.player) return;
-
-        // Nome e retrato
-        document.getElementById('currentCharName').textContent = this.player.name;
-        document.getElementById('currentCharPortrait').textContent = this.player.icon;
-        document.getElementById('currentCharPortrait').style.background = 
-            `linear-gradient(135deg, ${this.rgbToHex(this.player.elementColor)} 0%, ${this.rgbToHex(this.darkenColor(this.player.elementColor))} 100%)`;
-
-        // HP
-        const healthPercent = (this.player.health / this.player.maxHealth) * 100;
-        document.getElementById('playerHealth').style.width = healthPercent + '%';
-        document.getElementById('playerHealthText').textContent = 
-            `${Math.round(this.player.health)}/${this.player.maxHealth}`;
-
-        // Energia
-        const energyPercent = (this.player.energy / this.player.maxEnergy) * 100;
-        document.getElementById('playerEnergy').style.width = energyPercent + '%';
-        document.getElementById('playerEnergyText').textContent = 
-            `${Math.round(this.player.energy)}/${this.player.maxEnergy}`;
+        this.ui.updateCharacterUI();
     }
 
     updateBossUI() {
-        if (!this.boss) return;
-
-        const bossInfo = document.getElementById('bossInfo');
-        
-        if (this.boss.isAlive) {
-            bossInfo.style.display = 'block';
-            document.getElementById('bossName').textContent = this.boss.name;
-            
-            const healthPercent = (this.boss.health / this.boss.maxHealth) * 100;
-            document.getElementById('bossHealth').style.width = healthPercent + '%';
-            document.getElementById('bossHealthText').textContent = 
-                `${Math.round(this.boss.health)}/${this.boss.maxHealth}`;
-        } else {
-            bossInfo.style.display = 'none';
-        }
+        this.ui.updateBossUI();
     }
 
     updateSkillUI() {
-        if (!this.player) return;
-
-        // Skill E
-        const skillE = document.getElementById('skillECooldown');
-        if (this.player.skillCooldown > 0) {
-            const seconds = Math.ceil(this.player.skillCooldown / 60);
-            skillE.style.display = 'flex';
-            skillE.textContent = seconds;
-        } else {
-            skillE.style.display = 'none';
-        }
-
-        // Burst Q
-        const skillQ = document.getElementById('skillQ');
-        if (this.player.energy >= this.player.maxEnergy) {
-            skillQ.style.borderColor = '#ffd700';
-            skillQ.style.boxShadow = '0 0 20px rgba(255,215,0,0.8)';
-        } else {
-            skillQ.style.borderColor = 'rgba(255,255,255,0.5)';
-            skillQ.style.boxShadow = 'none';
-        }
+        this.ui.updateSkillUI();
     }
 
     updateCharacterSlotsUI() {
-        this.characters.forEach((char, index) => {
-            const slot = document.querySelector(`[data-index="${index}"]`);
-            const icon = document.getElementById(`char${index}`);
-            const element = document.getElementById(`element${index}`);
-            const cooldown = document.getElementById(`cooldown${index}`);
-
-            // Ícone e elemento
-            icon.textContent = char.icon;
-            icon.style.background = `linear-gradient(135deg, ${this.rgbToHex(char.elementColor)} 0%, ${this.rgbToHex(this.darkenColor(char.elementColor))} 100%)`;
-            
-            element.textContent = char.element.substring(0, 1);
-            element.classList.add(`element-${char.element.toLowerCase()}`);
-
-            // Highlight personagem ativo
-            if (index === this.currentCharacterIndex) {
-                slot.classList.add('active');
-            } else {
-                slot.classList.remove('active');
-            }
-
-            // Mostrar cooldown
-            if (char.switchCooldown > 0) {
-                const seconds = Math.ceil(char.switchCooldown / 1000);
-                cooldown.style.display = 'flex';
-                cooldown.textContent = seconds;
-            } else {
-                cooldown.style.display = 'none';
-            }
-
-            // Desabilitar se morto
-            if (char.health <= 0) {
-                slot.style.opacity = '0.3';
-                slot.style.pointerEvents = 'none';
-            } else {
-                slot.style.opacity = '1';
-                slot.style.pointerEvents = 'auto';
-            }
-        });
+        this.ui.updateCharacterSlotsUI();
     }
 
     rgbToHex(color) {
