@@ -17,6 +17,8 @@ class GenshinGame {
         this.particles = [];
         this.projectiles = [];
         this.elementalParticles = [];
+        this.globalHitstopFrames = 0;
+        this.lastImpactAt = 0;
         
         // Configurações de jogo
         this.config = {
@@ -24,7 +26,13 @@ class GenshinGame {
             runSpeed: 0.25,
             jumpForce: 0.3,
             gravity: 0.015,
-            cameraSensitivity: 0.002
+            cameraSensitivity: 0.002,
+            // Feedback de impacto: valores baixos para manter responsivo
+            hitstopFrames: 2,
+            attackerEndLagFrames: 3,
+            targetHitStunFrames: 4,
+            critBonusFrames: 1,
+            impactCooldownMs: 90
         };
         
         this.init();
@@ -213,7 +221,9 @@ class GenshinGame {
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
-                mesh: null
+                mesh: null,
+                endLagFrames: 0,
+                hitStunFrames: 0
             },
             {
                 name: "Diluc",
@@ -233,7 +243,9 @@ class GenshinGame {
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
-                mesh: null
+                mesh: null,
+                endLagFrames: 0,
+                hitStunFrames: 0
             },
             {
                 name: "Ganyu",
@@ -253,7 +265,9 @@ class GenshinGame {
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
-                mesh: null
+                mesh: null,
+                endLagFrames: 0,
+                hitStunFrames: 0
             },
             {
                 name: "Raiden Shogun",
@@ -273,7 +287,9 @@ class GenshinGame {
                 position: new THREE.Vector3(0, 1, 0),
                 velocity: new THREE.Vector3(0, 0, 0),
                 onGround: false,
-                mesh: null
+                mesh: null,
+                endLagFrames: 0,
+                hitStunFrames: 0
             }
         ];
 
@@ -550,7 +566,8 @@ class GenshinGame {
             attackRange: 3,
             detectionRange: 30,
             moveSpeed: 0.05,
-            isAlive: true
+            isAlive: true,
+            hitStunFrames: 0
         };
 
         // Criar mesh do boss (maior e mais imponente)
@@ -727,6 +744,7 @@ class GenshinGame {
 
     normalAttack() {
         if (!this.player || this.player.health <= 0) return;
+        if (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0) return;
 
         // Animação de ataque
         this.player.isAttacking = true;
@@ -804,6 +822,7 @@ class GenshinGame {
 
     useSkill() {
         if (!this.player || this.player.health <= 0) return;
+        if (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0) return;
         if (this.player.skillCooldown > 0) return;
 
         // Usar habilidade
@@ -974,6 +993,7 @@ class GenshinGame {
 
     useBurst() {
         if (!this.player || this.player.health <= 0) return;
+        if (this.player.endLagFrames > 0 || this.player.hitStunFrames > 0) return;
         if (this.player.energy < this.player.maxEnergy) return;
 
         // Usar supremo
@@ -1362,6 +1382,32 @@ class GenshinGame {
         this.updateCharacterUI();
     }
 
+    applyCombatImpact(attacker, target, isCrit = false) {
+        const now = performance.now();
+        if (now - this.lastImpactAt < this.config.impactCooldownMs) return;
+        this.lastImpactAt = now;
+
+        const bonus = isCrit ? this.config.critBonusFrames : 0;
+        this.globalHitstopFrames = Math.max(
+            this.globalHitstopFrames,
+            this.config.hitstopFrames + bonus
+        );
+
+        if (attacker && attacker.endLagFrames !== undefined) {
+            attacker.endLagFrames = Math.max(
+                attacker.endLagFrames,
+                this.config.attackerEndLagFrames + bonus
+            );
+        }
+
+        if (target && target.hitStunFrames !== undefined) {
+            target.hitStunFrames = Math.max(
+                target.hitStunFrames,
+                this.config.targetHitStunFrames + bonus
+            );
+        }
+    }
+
     damageEnemy(enemy, damage, isCrit = false) {
         if (!enemy.isAlive) return;
 
@@ -1373,6 +1419,21 @@ class GenshinGame {
 
         // Efeito de hit
         this.createHitEffect(enemy.position, this.player.elementColor);
+
+        // Feedback de impacto: atacante e alvo sofrem micro-travamento
+        this.applyCombatImpact(this.player, enemy, isCrit);
+
+        // Pequeno knockback para reforcar a sensacao de pancada
+        if (enemy.velocity && this.player) {
+            const pushDir = enemy.position.clone().sub(this.player.position);
+            pushDir.y = 0;
+            if (pushDir.lengthSq() > 0) {
+                pushDir.normalize().multiplyScalar(0.08);
+                enemy.velocity.x += pushDir.x;
+                enemy.velocity.z += pushDir.z;
+                enemy.velocity.y += 0.03;
+            }
+        }
 
         if (enemy.health <= 0) {
             enemy.isAlive = false;
@@ -1460,6 +1521,7 @@ class GenshinGame {
 
         const char = this.player;
         const speed = this.keys['shift'] ? this.config.runSpeed : this.config.moveSpeed;
+        const movementLocked = char.endLagFrames > 0 || char.hitStunFrames > 0;
 
         // Calcular direção de movimento baseado na câmera
         const forward = new THREE.Vector3();
@@ -1474,10 +1536,12 @@ class GenshinGame {
         // Aplicar movimento
         const movement = new THREE.Vector3();
         
-        if (this.keys['w']) movement.add(forward);
-        if (this.keys['s']) movement.sub(forward);
-        if (this.keys['d']) movement.add(right);
-        if (this.keys['a']) movement.sub(right);
+        if (!movementLocked) {
+            if (this.keys['w']) movement.add(forward);
+            if (this.keys['s']) movement.sub(forward);
+            if (this.keys['d']) movement.add(right);
+            if (this.keys['a']) movement.sub(right);
+        }
 
         if (movement.length() > 0) {
             movement.normalize().multiplyScalar(speed);
@@ -1489,7 +1553,7 @@ class GenshinGame {
         }
 
         // Pulo
-        if (this.keys[' '] && char.onGround) {
+        if (!movementLocked && this.keys[' '] && char.onGround) {
             char.velocity.y = this.config.jumpForce;
             char.onGround = false;
         }
@@ -1526,6 +1590,23 @@ class GenshinGame {
         const player = this.player;
 
         const distance = boss.position.distanceTo(player.position);
+
+        // Hitstun curto apos receber dano
+        if (boss.hitStunFrames > 0) {
+            boss.velocity.x *= 0.8;
+            boss.velocity.z *= 0.8;
+            boss.velocity.y -= this.config.gravity;
+            boss.position.add(boss.velocity);
+
+            if (boss.position.y <= 2) {
+                boss.position.y = 2;
+                boss.velocity.y = 0;
+            }
+
+            boss.mesh.position.copy(boss.position);
+            boss.mesh.rotation.x += 0.01;
+            return;
+        }
 
         // Atualizar cooldown
         if (boss.attackCooldown > 0) {
@@ -1828,6 +1909,21 @@ class GenshinGame {
         // Efeito visual
         this.createHitEffect(this.player.position, 0xff0000);
 
+        // Feedback de impacto quando o boss acerta o jogador
+        this.applyCombatImpact(this.boss, this.player);
+
+        // Pequeno knockback no jogador
+        if (this.boss) {
+            const pushDir = this.player.position.clone().sub(this.boss.position);
+            pushDir.y = 0;
+            if (pushDir.lengthSq() > 0) {
+                pushDir.normalize().multiplyScalar(0.12);
+                this.player.velocity.x += pushDir.x;
+                this.player.velocity.z += pushDir.z;
+                this.player.velocity.y += 0.05;
+            }
+        }
+
         // Flash de tela vermelha
         const flash = document.createElement('div');
         flash.style.position = 'fixed';
@@ -1968,11 +2064,23 @@ class GenshinGame {
 
         // Atualizar cooldowns de troca de personagem
         this.characters.forEach((char, index) => {
+            if (char.endLagFrames > 0) {
+                char.endLagFrames--;
+            }
+
+            if (char.hitStunFrames > 0) {
+                char.hitStunFrames--;
+            }
+
             if (char.switchCooldown > 0) {
                 char.switchCooldown -= 16; // ~1 frame
                 if (char.switchCooldown < 0) char.switchCooldown = 0;
             }
         });
+
+        if (this.boss && this.boss.hitStunFrames > 0) {
+            this.boss.hitStunFrames--;
+        }
 
         this.updateCharacterSlotsUI();
     }
@@ -2097,6 +2205,13 @@ class GenshinGame {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+
+        // Hitstop global para reforcar o impacto dos golpes
+        if (this.globalHitstopFrames > 0) {
+            this.globalHitstopFrames--;
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
 
         // Atualizar física e lógica
         this.updatePlayerMovement();
